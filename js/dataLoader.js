@@ -1,32 +1,65 @@
-// 載入系所資料
-async function loadDepartment() {
-    try {
-        const res = await fetch("data/Department.txt");
-        if (!res.ok) throw new Error("無法載入 Department.txt");
-        const text = await res.text();
-        return JSON.parse(text);
-    } catch (e) {
-        console.error("載入系所失敗:", e);
-        return {};
-    }
-}
+(function () {
+    let cachedCourses = null;
+    let cachedDense = null;
 
-// 載入 Excel 資料
-async function loadExcel() {
-    try {
-        const res = await fetch("data/export.xlsx");
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-        
-        const buf = await res.arrayBuffer();
-        const workbook = XLSX.read(buf, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-        
-        console.log(`Excel 載入成功: ${data.length} 筆資料`);
-        return data;
-    } catch (e) {
-        console.error("載入 Excel 失敗:", e);
-        document.getElementById("result").innerHTML = '<div class="error">載入資料失敗</div>';
-        return [];
+    async function loadCourses() {
+        if (cachedCourses) return cachedCourses;
+
+        const res = await fetch("data/courses.json");
+        if (!res.ok) throw new Error("無法載入 courses.json");
+
+        const raw = await res.json();
+
+        cachedCourses = raw.map(c => ({
+            "開課代碼": c.course_code || "",
+            "中文課程名稱": c.chn_name || "",
+            "系所": c.dept_chiabbr || c.dept_code || "",
+            "教師": c.teacher || "",
+            "必/選": c.option_code || "",
+            "學分": c.credit || "",
+            "地點時間": c.time_inf || "",
+            "限修條件": c.restrict || "",
+            "組": c.course_group || "",
+            "年": c.form_s || "",
+            "班": c.classes || "",
+
+            // 保留 raw（未來用）
+            __raw: c
+        }));
+
+        return cachedCourses;
     }
-}
+
+    async function loadDenseMap() {
+        if (cachedDense) return cachedDense;
+
+        try {
+            const res = await fetch("data/dense.json");
+            if (!res.ok) {
+                cachedDense = {};
+                return cachedDense;
+            }
+            cachedDense = await res.json();
+            return cachedDense;
+        } catch {
+            cachedDense = {};
+            return cachedDense;
+        }
+    }
+
+    async function loadDepartments() {
+        const courses = await loadCourses();
+        const set = new Set();
+        courses.forEach(c => {
+            if (c["系所"]) set.add(c["系所"]);
+        });
+        return Array.from(set).sort();
+    }
+
+    // 👉 掛到全域（這就是你原本在用的模型）
+    window.DataLoader = {
+        loadCourses,
+        loadDenseMap,
+        loadDepartments
+    };
+})();

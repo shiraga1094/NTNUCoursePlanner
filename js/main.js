@@ -1,28 +1,24 @@
-// 全域變數
-let deptMap = {};
 let excelData = [];
+let departments = [];
+let denseMap = [];
+
 let savedCourses = [];
 let selectedCourses = [];
 
-// 主程式
-async function main() {
-    deptMap = await loadDepartment();
-    excelData = await loadExcel();
+async function init() {
+    excelData = await DataLoader.loadCourses();
+    departments = await DataLoader.loadDepartments();
+    denseMap = await DataLoader.loadDenseMap();
 
-    if (excelData.length > 0) {
-        buildDeptOptions();
-        buildScheduleTable();
-        
-        document.getElementById("search").addEventListener("input", render);
-        document.getElementById("filterDept").addEventListener("change", render);
-        document.getElementById("filterReq").addEventListener("change", render);
-        document.getElementById("filterDay").addEventListener("change", render);
-        document.getElementById("clearBtn").addEventListener("click", clearSelected);
-        document.getElementById("resetBtn").addEventListener("click", clearAllData);
-        
-        loadFromStorage();
-        render();
-    }
+    loadFromStorage();
+
+    buildDeptOptions();
+    buildScheduleTable();
+    render();
+    renderSaved();
+    renderSchedule();
 }
 
-main();
+init().catch(err => {
+    console.error("初始化失敗", err);
+});
