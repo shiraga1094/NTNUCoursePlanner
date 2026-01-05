@@ -87,6 +87,107 @@ body, .modal-card, .page-top, .card{ transition: background 280ms ease, color 18
   display:flex; gap:10px; align-items:center; flex-wrap:wrap;
 }
 
+/* 篩選器折疊按鈕 (預設隱藏) */
+.filter-toggle {
+  display: none;
+}
+
+/* 悬浮按钮 (预设隐藏，移动端显示) */
+.float-toggle {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.float-toggle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0,0,0,.4);
+}
+
+.float-toggle:active {
+  transform: scale(0.95);
+}
+
+.float-toggle-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.float-toggle-text {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* 悬浮面板 */
+.float-panel {
+  display: none;
+  position: fixed;
+  top: 70px;
+  right: 0;
+  width: 90%;
+  max-width: 400px;
+  height: calc(100vh - 90px);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px 0 0 16px;
+  box-shadow: -4px 0 20px rgba(0,0,0,.3);
+  z-index: 101;
+  flex-direction: column;
+  animation: slideIn 0.3s ease;
+}
+
+.float-panel.show {
+  display: flex;
+}
+
+.float-panel-large {
+  width: 95%;
+  max-width: 800px;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.float-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+
+.float-panel-body {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+}
+
 .spacer{ flex:1; }
 .tiny{ color:var(--muted); font-size:12px; }
 
@@ -521,3 +622,424 @@ body.light .timecell{ background: rgba(0,0,0,.03); color: var(--muted); }
 body.light .slotcell{ background: transparent; }
 body.light .coursepill{ background: rgba(255,255,255,.9); border-color: var(--border); color: var(--text); }
 body.light .modal-body{ color: var(--muted); }
+
+/* ========== 響應式設計：手機版 ========== */
+
+@media (max-width: 768px) {
+  /* 頂部導航 */
+  .topbar {
+    height: auto;
+    min-height: 54px;
+    flex-wrap: wrap;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  
+  .topbar-left, .topbar-right {
+    gap: 8px;
+  }
+  
+  .term {
+    gap: 6px;
+  }
+  
+  .select {
+    min-width: 100px;
+    font-size: 14px;
+  }
+  
+  /* 主要內容區 */
+  .app {
+    padding: 10px;
+  }
+  
+  .page-top {
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  
+  /* 搜尋列改為彈性佈局 */
+  .search-row {
+    margin-bottom: 8px;
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .search-row .input {
+    flex: 1;
+  }
+  
+  /* 顯示篩選器折疊按鈕 */
+  .filter-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .filter-toggle-icon {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+  }
+  
+  /* 篩選面板預設收起 */
+  .filter-panel {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+    margin-bottom: 0;
+  }
+  
+  /* 展開狀態 */
+  .filter-panel.expanded {
+    max-height: 800px;
+    opacity: 1;
+    margin-bottom: 8px;
+  }
+  
+  /* 篩選器改為垂直排列 */
+  .filter-row {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .filter-row .select,
+  .filter-row .input,
+  .filter-row .btn {
+    width: 100%;
+    min-width: unset;
+  }
+  
+  .filter-row .spacer {
+    display: none;
+  }
+  
+  .filter-row > div {
+    width: 100%;
+  }
+  
+  /* 佈局改為單列 */
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    height: auto;
+    min-height: calc(100vh - 54px - 20px);
+  }
+  
+  .layout.p2 {
+    grid-template-columns: 1fr;
+  }
+  
+  /* 右側欄在手機上移到下方 */
+  .rightbar {
+    order: 2;
+    max-height: 400px;
+  }
+  
+  .content {
+    order: 1;
+  }
+  
+  /* 課程卡片 */
+  .cards {
+    gap: 8px;
+    padding-right: 0;
+  }
+  
+  .card {
+    padding: 10px;
+    border-radius: 12px;
+  }
+  
+  .card .title {
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  
+  .card .meta {
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  
+  .tag {
+    font-size: 11px;
+    padding: 3px 7px;
+  }
+  
+  .card .small {
+    font-size: 11px;
+  }
+  
+  .card .actions {
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  
+  .card .actions .btn {
+    flex: 1;
+    min-width: calc(50% - 3px);
+    font-size: 13px;
+    height: 36px;
+  }
+  
+  /* 已加入清單 */
+  .saved {
+    max-height: 300px;
+  }
+  
+  .saved-item {
+    padding: 8px 10px;
+  }
+  
+  .saved-item .name {
+    font-size: 14px;
+  }
+  
+  .saved-item .line {
+    font-size: 11px;
+  }
+  
+  /* 按鈕 */
+  .btn {
+    height: 40px;
+    font-size: 14px;
+    touch-action: manipulation;
+  }
+  
+  .btn-sm {
+    height: 36px;
+    font-size: 13px;
+  }
+  
+  /* 輸入框 */
+  .input, .select {
+    height: 40px;
+    font-size: 14px;
+  }
+  
+  /* 分頁器 */
+  .pager {
+    gap: 8px;
+    margin-top: 10px;
+  }
+  
+  .pager .btn {
+    min-width: 80px;
+  }
+  
+  /* 課表 */
+  .table {
+    font-size: 11px;
+  }
+  
+  .table th,
+  .table td {
+    padding: 6px 4px;
+    min-width: 45px;
+  }
+  
+  .timecell {
+    font-size: 10px;
+    min-width: 55px;
+  }
+  
+  .coursepill {
+    font-size: 10px;
+    padding: 4px 6px;
+    min-height: 30px;
+  }
+  
+  /* 排序後清單 */
+  .sorted {
+    padding: 8px;
+  }
+  
+  .sorted-item {
+    padding: 8px;
+  }
+  
+  .sorted-item .name {
+    font-size: 14px;
+  }
+  
+  .sorted-item .line {
+    font-size: 11px;
+  }
+  
+  /* 模態框 */
+  .modal {
+    padding: 10px;
+  }
+  
+  .modal-card {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 16px;
+  }
+  
+  .modal-header {
+    padding: 12px;
+  }
+  
+  .modal-body {
+    padding: 12px;
+    font-size: 14px;
+  }
+  
+  /* 衝突提示 */
+  .notice {
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+  
+  .notice-text {
+    font-size: 13px;
+  }
+  
+  /* 節次選擇器 */
+  .slotcell-btn {
+    min-width: 40px;
+    height: 40px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+  
+  /* P2 面板頭部 */
+  .panel-head {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .credit {
+    gap: 6px;
+  }
+  
+  .credit-num {
+    font-size: 18px;
+  }
+  
+  /* 隱藏不必要元素 */
+  .sidebar {
+    display: none;
+  }
+  
+  /* 在手机上隐藏右侧栏，使用悬浮面板代替 */
+  .rightbar {
+    display: none !important;
+  }
+  
+  /* 显示悬浮按钮 */
+  .float-toggle {
+    display: flex;
+  }
+  
+  /* 调整课表包裝器 */
+  .schedule-wrap {
+    padding-right: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 優化觸控體驗 */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  button, .btn, .card, .saved-item, .list .item {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+}
+
+/* 小尺寸手機優化 (≤ 480px) */
+@media (max-width: 480px) {
+  .topbar {
+    padding: 6px 8px;
+  }
+  
+  .app {
+    padding: 8px;
+  }
+  
+  .page-top {
+    padding: 8px;
+  }
+  
+  .card {
+    padding: 8px;
+  }
+  
+  .card .title {
+    font-size: 14px;
+  }
+  
+  .tag {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+  
+  .btn {
+    height: 38px;
+    font-size: 13px;
+    padding: 0 10px;
+  }
+  
+  .btn-sm {
+    height: 34px;
+    font-size: 12px;
+    padding: 0 8px;
+  }
+  
+  .input, .select {
+    height: 38px;
+    font-size: 13px;
+    padding: 0 10px;
+  }
+  
+  .table {
+    font-size: 10px;
+  }
+  
+  .table th,
+  .table td {
+    padding: 4px 2px;
+    min-width: 40px;
+  }
+  
+  .timecell {
+    font-size: 9px;
+    min-width: 50px;
+  }
+  
+  .coursepill {
+    font-size: 9px;
+    padding: 3px 4px;
+    min-height: 25px;
+  }
+  
+  .slotcell-btn {
+    min-width: 35px;
+    height: 35px;
+    font-size: 11px;
+  }
+}
+
+/* 平板優化 (768px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .layout {
+    grid-template-columns: 1fr 280px;
+  }
+  
+  .rightbar {
+    padding: 10px;
+  }
+  
+  .select {
+    min-width: 140px;
+  }
+}
+

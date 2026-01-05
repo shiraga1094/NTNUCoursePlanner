@@ -578,6 +578,25 @@ function renderResults(){
 function renderSavedPanels(){
   renderSavedInto($("savedList"));
   renderSavedInto($("savedList2"));
+  renderSavedInto($("savedListFloat"));  // P1 悬浮面板
+  renderSavedInto($("savedListFloat2")); // P2 悬浮面板
+  
+  // 更新悬浮按钮计数
+  const p1FloatCount = $("p1FloatCount");
+  if (p1FloatCount) {
+    p1FloatCount.textContent = String(savedCourses.length);
+  }
+  
+  // 更新悬浮面板学分
+  const totalCredits = selectedCourses.reduce((sum,c)=>sum + (Number(c.credit)||0), 0);
+  const creditSumFloat = $("creditSumFloat");
+  if (creditSumFloat) {
+    creditSumFloat.textContent = String(totalCredits);
+  }
+  const creditSumFloat2 = $("creditSumFloat2");
+  if (creditSumFloat2) {
+    creditSumFloat2.textContent = String(totalCredits);
+  }
 }
 
 function renderSavedInto(container){
@@ -816,6 +835,19 @@ function bindEvents(){
 
   if ($("slotFilterBtn")) $("slotFilterBtn").addEventListener("click", ()=>openSlotPicker());
 
+  // 篩選器折疊按鈕 (手機版)
+  const filterToggle = $("filterToggle");
+  const filterPanel = $("filterPanel");
+  if (filterToggle && filterPanel) {
+    filterToggle.onclick = () => {
+      const isExpanded = filterPanel.classList.toggle("expanded");
+      const icon = filterToggle.querySelector(".filter-toggle-icon");
+      if (icon) {
+        icon.textContent = isExpanded ? "▲" : "▼";
+      }
+    };
+  }
+
   $("prevPage").onclick = ()=>{ page=Math.max(1,page-1); renderP1(); };
   $("nextPage").onclick = ()=>{ page=page+1; renderP1(); };
 
@@ -828,6 +860,54 @@ function bindEvents(){
 
   $("p2Sort").addEventListener("change", ()=>renderP2());
   $("p2ShowConflict").addEventListener("change", ()=>renderP2());
+
+  // P1 悬浮面板
+  const p1FloatToggle = $("p1FloatToggle");
+  const p1FloatPanel = $("p1FloatPanel");
+  const p1FloatClose = $("p1FloatClose");
+  
+  if (p1FloatToggle && p1FloatPanel) {
+    p1FloatToggle.onclick = () => {
+      p1FloatPanel.classList.toggle("show");
+    };
+  }
+  
+  if (p1FloatClose && p1FloatPanel) {
+    p1FloatClose.onclick = () => {
+      p1FloatPanel.classList.remove("show");
+    };
+  }
+  
+  // P2 悬浮面板
+  const p2FloatToggle = $("p2FloatToggle");
+  const p2FloatPanel = $("p2FloatPanel");
+  const p2FloatClose = $("p2FloatClose");
+  
+  if (p2FloatToggle && p2FloatPanel) {
+    p2FloatToggle.onclick = () => {
+      p2FloatPanel.classList.toggle("show");
+    };
+  }
+  
+  if (p2FloatClose && p2FloatPanel) {
+    p2FloatClose.onclick = () => {
+      p2FloatPanel.classList.remove("show");
+    };
+  }
+  
+  // P2 悬浮面板的排序和按钮
+  if ($("p2SortFloat")) {
+    $("p2SortFloat").addEventListener("change", ()=>{
+      $("p2Sort").value = $("p2SortFloat").value;
+      renderP2();
+    });
+  }
+  if ($("btnClearFloat")) {
+    $("btnClearFloat").onclick = ()=>clearAll();
+  }
+  if ($("btnResetFloat")) {
+    $("btnResetFloat").onclick = ()=>resetAll();
+  }
   if ($("exportBtn")) $("exportBtn").addEventListener("click", ()=>exportSchedule());
 
   $("modalClose").onclick = ()=>closeModal();

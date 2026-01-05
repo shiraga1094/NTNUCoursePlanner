@@ -32,8 +32,11 @@
     <div class="page-top">
       <div class="search-row">
         <input id="searchInput" class="input" placeholder="搜尋：課名 / 課碼 / 老師（支援關鍵字）" />
+        <button id="filterToggle" class="btn btn-sm filter-toggle">
+          <span class="filter-toggle-icon">▼</span> 篩選器
+        </button>
       </div>
-      <div class="filter-row">
+      <div id="filterPanel" class="filter-row filter-panel">
         <select id="filterDept" class="select">
           <option value="">所有系所</option>
         </select>
@@ -111,6 +114,25 @@
         <div id="savedList" class="saved"></div>
       </aside>
     </div>
+
+    <!-- P1 悬浮已选面板 -->
+    <button id="p1FloatToggle" class="float-toggle">
+      <span class="float-toggle-icon">📋</span>
+      <span class="float-toggle-text">已選 (<span id="p1FloatCount">0</span>)</span>
+    </button>
+    <div id="p1FloatPanel" class="float-panel">
+      <div class="float-panel-header">
+        <div class="panel-title">已選清單</div>
+        <div class="credit">
+          <span class="label">學分</span>
+          <span id="creditSumFloat" class="credit-num">0</span>
+        </div>
+        <button id="p1FloatClose" class="btn btn-sm">✕</button>
+      </div>
+      <div class="float-panel-body">
+        <div id="savedListFloat" class="saved"></div>
+      </div>
+    </div>
   </section>
 
   <!-- P2 -->
@@ -159,6 +181,36 @@
 
         <div id="savedList2" class="saved"></div>
       </aside>
+    </div>
+
+    <!-- P2 悬浮课表面板 -->
+    <button id="p2FloatToggle" class="float-toggle">
+      <span class="float-toggle-icon">�</span>
+      <span class="float-toggle-text">已選</span>
+    </button>
+    <div id="p2FloatPanel" class="float-panel">
+      <div class="float-panel-header">
+        <div class="panel-title">已選清單</div>
+        <div class="credit">
+          <span class="label">學分</span>
+          <span id="creditSumFloat2" class="credit-num">0</span>
+        </div>
+        <button id="p2FloatClose" class="btn btn-sm">✕</button>
+      </div>
+      <div class="float-panel-body">
+        <div class="filter-row" style="margin-bottom:10px;">
+          <select id="p2SortFloat" class="select" style="width:100%;">
+            <option value="time">排序：依星期/節次</option>
+            <option value="name">排序：依課名</option>
+            <option value="dept">排序：依系所</option>
+          </select>
+        </div>
+        <div class="right-actions" style="margin-bottom:10px;">
+          <button id="btnClearFloat" class="btn btn-sm">清空</button>
+          <button id="btnResetFloat" class="btn btn-sm btn-warn">重置</button>
+        </div>
+        <div id="savedListFloat2" class="saved"></div>
+      </div>
     </div>
   </section>
 </main>
