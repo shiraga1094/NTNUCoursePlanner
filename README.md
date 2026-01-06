@@ -1,4 +1,4 @@
-# Course Selection Website / 課程選課系統
+# NTNU Course Planner / NTNU 課程排課系統
 
 ## 專案簡介 / Project Description
 
