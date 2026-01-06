@@ -495,7 +495,7 @@ body, .modal-card, .page-top, .card{ transition: background 280ms ease, color 18
 
 .modal.hidden{ display:none; }
 .modal{
-  position:fixed; inset:0; z-index:50;
+  position:fixed; inset:0; z-index:200;
 }
 .modal-backdrop{
   position:absolute; inset:0;
@@ -514,8 +514,8 @@ body, .modal-card, .page-top, .card{ transition: background 280ms ease, color 18
   box-shadow: var(--shadow);
   overflow:hidden;
 }
-.modal-backdrop{ z-index:50; pointer-events: none; }
-.modal-card{ z-index:60; pointer-events:auto; }
+.modal-backdrop{ z-index:200; pointer-events: none; }
+.modal-card{ z-index:210; pointer-events:auto; }
 .slotcell-btn{
   height:18px;
   padding:1px 4px;
