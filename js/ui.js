@@ -1,6 +1,3 @@
-// UI rendering and display functions
-// Handles all DOM updates, modals, themes, and schedule visualization
-
 import { state } from './state.js';
 import { $, escapeHtml, deptMatchesCategory } from './utils.js';
 import { denseKey } from './courseData.js';
@@ -8,7 +5,6 @@ import { isSaved, isSelected, getFilteredCourses } from './filters.js';
 import { addToSaved, removeSaved, toggleSelected, checkNewCourseConflict } from './courseActions.js';
 import { parseSlot, parseTimeToSchedule, dayIndex, slotIndex, SLOT_TABLE } from './timeParser.js';
 
-// Switch between P1 (search) and P2 (schedule) pages
 export function setActivePage(p){
   state.activePage = p;
   $("pageP1").classList.toggle("active", p==="P1");
@@ -19,7 +15,6 @@ export function setActivePage(p){
   renderAll();
 }
 
-// Open modal dialog with title and content
 export function openModal(title, html){
   $("modalTitle").textContent = title;
   $("modalBody").innerHTML = html || "<div class='tiny'>無資料</div>";
@@ -31,23 +26,33 @@ export function closeModal(){
   $("modalBody").innerHTML = "";
 }
 
-// Apply theme (light/dark)
 export function applyTheme(theme){
+  document.body.classList.remove('light', 'gray');
   if (theme === 'light') document.body.classList.add('light');
-  else document.body.classList.remove('light');
+  else if (theme === 'gray') document.body.classList.add('gray');
+  
   const btn = document.getElementById('themeToggle');
-  if (btn) btn.textContent = theme === 'light' ? '☀️' : '🌙';
+  if (btn) {
+    if (theme === 'light') btn.textContent = '☀️';
+    else if (theme === 'gray') btn.textContent = '◐';
+    else btn.textContent = '🌙';
+  }
 }
 
 export function toggleTheme(){
-  const isLight = document.body.classList.toggle('light');
-  const theme = isLight ? 'light' : 'dark';
-  localStorage.setItem('theme', theme);
-  applyTheme(theme);
+  const current = document.body.classList.contains('light') ? 'light' : 
+                  document.body.classList.contains('gray') ? 'gray' : 'dark';
+  
+  let next;
+  if (current === 'dark') next = 'light';
+  else if (current === 'light') next = 'gray';
+  else next = 'dark';
+  
+  localStorage.setItem('theme', next);
+  applyTheme(next);
 }
 
 export function showConflictNotice(msg){
-  // Conflict notice removed - only show red highlighting in P2
 }
 
 export function closeConflictNotice(){
@@ -126,7 +131,45 @@ export function renderCoreSelect(){
 }
 
 export function renderResults(){
-  const list = getFilteredCourses();
+  let list = getFilteredCourses();
+  
+  const sortMode = $("p1Sort") ? $("p1Sort").value : 'default';
+  if (sortMode !== 'default') {
+    list = [...list];
+    const [type, order] = sortMode.split('-');
+    const isDesc = order === 'desc';
+    
+    if (type === 'name') {
+      list.sort((a,b) => {
+        const cmp = (a.name||'').localeCompare(b.name||'', 'zh-Hant');
+        return isDesc ? -cmp : cmp;
+      });
+    } else if (type === 'dept') {
+      list.sort((a,b) => {
+        const cmp = (a.dept||'').localeCompare(b.dept||'', 'zh-Hant');
+        return isDesc ? -cmp : cmp;
+      });
+    } else if (type === 'credit') {
+      list.sort((a,b) => {
+        const diff = (Number(a.credit)||0) - (Number(b.credit)||0);
+        return isDesc ? -diff : diff;
+      });
+    } else if (type === 'time') {
+      list.sort((a,b) => {
+        const ta = parseTimeToSchedule(a.time);
+        const tb = parseTimeToSchedule(b.time);
+        const aFirst = ta && ta.length > 0 ? ta[0] : {day:'', slots:[]};
+        const bFirst = tb && tb.length > 0 ? tb[0] : {day:'', slots:[]};
+        const da = dayIndex(aFirst.day), db = dayIndex(bFirst.day);
+        if (da !== db) return isDesc ? db - da : da - db;
+        const sa = (aFirst.slots[0] || '');
+        const sb = (bFirst.slots[0] || '');
+        const diff = slotIndex(sa) - slotIndex(sb);
+        return isDesc ? -diff : diff;
+      });
+    }
+  }
+  
   $("p1Count").textContent = String(list.length);
 
   const totalPages = Math.max(1, Math.ceil(list.length / state.PAGE_SIZE));
@@ -338,8 +381,6 @@ function buildScheduleTable(){
   return html;
 }
 
-// Render main schedule grid with selected courses
-// Handles multi-segment courses and conflict highlighting
 export function renderSchedule(){
   const wrap = $("scheduleWrap");
   wrap.innerHTML = buildScheduleTable();
@@ -352,7 +393,6 @@ export function renderSchedule(){
   });
   renderP1();
 
-  // Find courses that conflict with attempted selection
   const conflictingCourseKeys = new Set();
   if (state.conflictingCourse) {
     const conflicts = checkNewCourseConflict(state.conflictingCourse);
@@ -361,7 +401,6 @@ export function renderSchedule(){
     }
   }
 
-  // Map courses to their time slots
   const cellCourses = new Map();
   for (const c of state.selectedCourses){
     const times = parseTimeToSchedule(c.time);
@@ -381,11 +420,9 @@ export function renderSchedule(){
     const cell = document.querySelector(`.slotcell[data-day="${day}"][data-slot="${slot}"]`);
     if (!cell) continue;
 
-    // Mark cell if multiple courses in same slot
     const isConflict = arr.length > 1;
     if (showConflict && isConflict) cell.classList.add("has-conflict");
 
-    // Render course pills with conflict styling
     for (const c of arr){
       const courseKey = denseKey(c);
       const isConflictingWithAttempted = conflictingCourseKeys.has(courseKey);
@@ -504,6 +541,22 @@ export function renderTermSelect(){
   if (state.currentTerm && state.availableTerms.includes(state.currentTerm)) {
     sel.value = state.currentTerm;
   }
+}
+
+export function openExportPicker(){
+  const html = `
+    <div style="padding:24px;display:flex;flex-direction:column;gap:16px;">
+      <div style="text-align:center;font-size:14px;color:#666;">選擇匯出格式</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <button id="exportPNG" class="btn btn-primary" style="padding:12px;">匯出為 PNG 圖片</button>
+        <button id="exportPDF" class="btn btn-primary" style="padding:12px;">匯出為 PDF 文件</button>
+        <button id="exportXLSX" class="btn btn-primary" style="padding:12px;">匯出為 Excel 表格</button>
+      </div>
+    </div>
+  `;
+  openModal('匯出課表', html);
+  const modalCard = document.querySelector('#modal .modal-card');
+  if (modalCard) modalCard.style.width = 'min(420px, calc(100vw - 20px))';
 }
 
 export function openSlotPicker(){

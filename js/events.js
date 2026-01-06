@@ -4,7 +4,8 @@
 import { state } from './state.js';
 import { $ } from './utils.js';
 import { clearAll, resetAll } from './storage.js';
-import { setActivePage, renderP1, renderP2, renderAll, toggleTheme, closeConflictNotice, closeModal, openSlotPicker } from './ui.js';
+import { setActivePage, renderP1, renderP2, renderAll, toggleTheme, closeConflictNotice, closeModal, openSlotPicker, openExportPicker } from './ui.js';
+import { parseTimeToSchedule, SLOT_TABLE } from './timeParser.js';
 
 // Export image settings
 const EXPORT_FIXED_WIDTH = 1200;
@@ -22,6 +23,7 @@ export function bindEvents(){
   $("filterDay").addEventListener("change", ()=>{ state.page=1; renderP1(); });
   $("filterMode").addEventListener("change", ()=>{ state.page=1; renderP1(); });
   if ($("filterLocation")) $("filterLocation").addEventListener("change", ()=>{ state.page=1; renderP1(); });
+  if ($("p1Sort")) $("p1Sort").addEventListener("change", ()=>{ state.page=1; renderP1(); });
 
   if ($("slotFilterBtn")) $("slotFilterBtn").addEventListener("click", ()=>openSlotPicker());
 
@@ -92,7 +94,13 @@ export function bindEvents(){
   if ($("btnResetFloat")) {
     $("btnResetFloat").onclick = ()=>{ resetAll(); renderAll(); };
   }
-  if ($("exportBtn")) $("exportBtn").addEventListener("click", ()=>exportSchedule());
+  if ($("exportBtn")) $("exportBtn").addEventListener("click", ()=>openExportPicker());
+  
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'exportPNG') { closeModal(); exportSchedulePNG(); }
+    if (e.target.id === 'exportPDF') { closeModal(); exportSchedulePDF(); }
+    if (e.target.id === 'exportXLSX') { closeModal(); exportScheduleXLSX(); }
+  });
 
   $("modalClose").onclick = ()=>closeModal();
   document.querySelector("#modal .modal-backdrop").onclick = ()=>closeModal();
@@ -124,7 +132,7 @@ async function ensureHtml2Canvas(){
 
 // Export schedule as PNG image
 // Removes conflict highlighting from exported image
-async function exportSchedule(){
+async function exportSchedulePNG(){
   try{
     const html2canvas = await ensureHtml2Canvas();
     const node = document.querySelector('#scheduleWrap');
@@ -200,5 +208,208 @@ async function exportSchedule(){
   }catch(err){
     console.error('export failed', err);
     alert('匯出失敗：' + (err && err.message));
+  }
+}
+
+async function exportSchedulePDF(){
+  try{
+    const html2canvas = await ensureHtml2Canvas();
+    const node = document.querySelector('#scheduleWrap');
+    if (!node) return alert('找不到課表節點');
+    
+    const table = node.querySelector('table') || node;
+    const clone = table.cloneNode(true);
+    
+    clone.querySelectorAll('.has-conflict').forEach(el => el.classList.remove('has-conflict'));
+    clone.querySelectorAll('.conflict').forEach(el => el.classList.remove('conflict'));
+    
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'absolute';
+    wrapper.style.left = '-99999px';
+    wrapper.style.top = '0';
+    wrapper.style.background = getComputedStyle(document.body).backgroundColor || '#ffffff';
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    const SCALE = 2;
+    const exportWidth = EXPORT_FIXED_WIDTH;
+    clone.style.width = exportWidth + 'px';
+
+    const canvas = await html2canvas(clone, {backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff', width: exportWidth, scale: SCALE});
+    wrapper.remove();
+    
+    const imgData = canvas.toDataURL('image/png');
+    
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    await new Promise((resolve, reject) => {
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+    
+    const pdf = new window.jspdf.jsPDF({
+      orientation: canvas.width > canvas.height ? 'l' : 'p',
+      unit: 'px',
+      format: [canvas.width, canvas.height]
+    });
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+    pdf.save('timetable.pdf');
+  }catch(err){
+    console.error('PDF export failed', err);
+    alert('PDF 匯出失敗：' + (err && err.message));
+  }
+}
+
+async function exportScheduleXLSX(){
+  try{
+    const XLSX = await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+      script.onload = () => resolve(window.XLSX);
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+    
+    const days = ["一","二","三","四","五","六"];
+    const slots = state.SLOT_TABLE || SLOT_TABLE;
+    
+    const data = [];
+    const header = ['節次', '時間', ...days.map(d => `週${d}`)];
+    data.push(header);
+    
+    for (const slot of slots) {
+      const timeStr = `${String(slot.s).padStart(4,'0').replace(/(\d{2})(\d{2})/,'$1:$2')} - ${String(slot.e).padStart(4,'0').replace(/(\d{2})(\d{2})/,'$1:$2')}`;
+      const row = [slot.code, timeStr];
+      
+      for (const day of days) {
+        const courses = [];
+        
+        for (const c of state.selectedCourses) {
+          const times = parseTimeToSchedule(c.time);
+          if (!times || times.length === 0) continue;
+          for (const t of times) {
+            if (t.day === day && t.slots.includes(slot.code)) {
+              const parts = [c.name];
+              if (c.teacher) parts.push(c.teacher);
+              if (c.location) parts.push(c.location);
+              courses.push(parts.join('\n'));
+              break;
+            }
+          }
+        }
+        
+        row.push(courses.join('\n\n'));
+      }
+      data.push(row);
+    }
+    
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    ws['!cols'] = [{wch: 6}, {wch: 14}, ...days.map(() => ({wch: 18}))];
+    ws['!rows'] = data.map((row, idx) => {
+      if (idx === 0) return {hpt: 28};
+      const maxLines = Math.max(1, ...row.slice(2).map(cell => 
+        ((cell || '').match(/\n/g) || []).length + 1
+      ));
+      return {hpt: Math.max(50, maxLines * 16 + 10)};
+    });
+    
+    const isLight = document.body.classList.contains('light');
+    const isGray = document.body.classList.contains('gray');
+    
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({r: R, c: C});
+        if (!ws[cellRef]) {
+          ws[cellRef] = {t: 's', v: ''};
+        }
+        
+        const cellValue = ws[cellRef].v || '';
+        const hasContent = cellValue && cellValue.trim() !== '';
+        let bgColor, fontColor, borderColor;
+        
+        if (isLight) {
+          if (R === 0) {
+            bgColor = 'f3eae0';
+            fontColor = '1A202C';
+          } else if (C === 0 || C === 1) {
+            bgColor = 'fbf7f3';
+            fontColor = '1A202C';
+          } else if (hasContent) {
+            bgColor = 'fffaf7';
+            fontColor = '1A202C';
+          } else {
+            bgColor = 'fefcfa';
+            fontColor = '999999';
+          }
+          borderColor = 'E0E0E0';
+        } else if (isGray) {
+          if (R === 0) {
+            bgColor = '3a3a3a';
+            fontColor = 'F0F0F0';
+          } else if (C === 0 || C === 1) {
+            bgColor = '4a4a4a';
+            fontColor = 'DCDCDC';
+          } else if (hasContent) {
+            bgColor = '525252';
+            fontColor = 'E8E8E8';
+          } else {
+            bgColor = '404040';
+            fontColor = '999999';
+          }
+          borderColor = '5a5a5a';
+        } else {
+          if (R === 0) {
+            bgColor = '0b0d12';
+            fontColor = 'FFFFFF';
+          } else if (C === 0 || C === 1) {
+            bgColor = '0f1320';
+            fontColor = 'EAEAEA';
+          } else if (hasContent) {
+            bgColor = '0c101a';
+            fontColor = 'EAEAEA';
+          } else {
+            bgColor = '0a0c11';
+            fontColor = '666666';
+          }
+          borderColor = '1a1f2b';
+        }
+        
+        ws[cellRef].s = {
+          alignment: {
+            vertical: 'center',
+            horizontal: 'center',
+            wrapText: true
+          },
+          border: {
+            top: {style: 'thin', color: {rgb: borderColor}},
+            bottom: {style: 'thin', color: {rgb: borderColor}},
+            left: {style: 'thin', color: {rgb: borderColor}},
+            right: {style: 'thin', color: {rgb: borderColor}}
+          },
+          font: {
+            name: '微軟正黑體',
+            sz: R === 0 ? 11 : (C === 0 || C === 1 ? 9 : 10),
+            bold: R === 0 || C === 0,
+            color: {rgb: fontColor}
+          },
+          fill: {
+            patternType: 'solid',
+            fgColor: {rgb: bgColor}
+          }
+        };
+      }
+    }
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '課表');
+    
+    XLSX.writeFile(wb, 'timetable.xlsx');
+  }catch(err){
+    console.error('XLSX export failed', err);
+    alert('Excel 匯出失敗：' + (err && err.message));
   }
 }
