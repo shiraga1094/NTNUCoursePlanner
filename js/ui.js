@@ -394,7 +394,7 @@ export function renderSchedule(){
       pill.className = "coursepill" + (showConflict && (isConflict || isConflictingWithAttempted) ? " conflict" : "");
       pill.innerHTML = `
         <div class="pname">${escapeHtml(c.name)}</div>
-        <div class="pinfo">${escapeHtml(c.teacher || "")}</div>
+        <div class="pinfo">${escapeHtml(c.teacher || "")}${c.location ? ' <small>' + escapeHtml(c.location) + '</small>' : ''}</div>
       `;
       pill.onclick = ()=>{
         const key2 = denseKey(c);
