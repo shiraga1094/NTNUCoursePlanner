@@ -1,0 +1,5 @@
+User-agent: *
+Disallow:
+
+# Point to sitemap (replace {{BASE_URL}} with your real site URL)
+Sitemap: {{BASE_URL}}/sitemap.xml
