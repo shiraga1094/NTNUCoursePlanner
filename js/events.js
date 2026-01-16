@@ -5,7 +5,7 @@ import { state } from './state.js';
 import { $ } from './utils.js';
 import { clearAll, resetAll } from './storage.js';
 import { setActivePage, renderP1, renderP2, renderAll, toggleTheme, closeConflictNotice, closeModal, openSlotPicker, openExportPicker } from './ui.js';
-import { parseTimeToSchedule, SLOT_TABLE } from './timeParser.js';
+import { parseTimeToSchedule, SLOT_TABLE, NTU_SLOT_TABLE } from './timeParser.js';
 
 // Export image settings
 const EXPORT_FIXED_WIDTH = 1200;
@@ -48,6 +48,17 @@ export function bindEvents(){
   // Adjust padding on load and resize
   window.addEventListener('resize', adjustContentPadding);
   window.addEventListener('load', adjustContentPadding);
+  
+  // Re-render schedule on resize to recalculate spanning pill positions
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (state.activePage === 'P2') {
+        renderP2();
+      }
+    }, 150);
+  });
   setTimeout(adjustContentPadding, 100);
 
   $("searchInput").addEventListener("input", ()=>{ state.page=1; renderP1(); });
@@ -209,6 +220,18 @@ async function exportSchedulePNG(){
     // Export table directly
     const clone = table.cloneNode(true);
     
+    // Clone tbody and its spanning pills (coursepill-span elements)
+    const originalTbody = table.querySelector('tbody');
+    const clonedTbody = clone.querySelector('tbody');
+    if (originalTbody && clonedTbody) {
+      // Copy spanning pills from original tbody
+      const spanningPills = originalTbody.querySelectorAll('.coursepill-span');
+      spanningPills.forEach(pill => {
+        const clonedPill = pill.cloneNode(true);
+        clonedTbody.appendChild(clonedPill);
+      });
+    }
+    
     // Remove conflict highlighting for clean export
     clone.querySelectorAll('.has-conflict').forEach(el => el.classList.remove('has-conflict'));
     clone.querySelectorAll('.conflict').forEach(el => el.classList.remove('conflict'));
@@ -224,7 +247,30 @@ async function exportSchedulePNG(){
     const SCALE = 2;
     const exportWidth = EXPORT_FIXED_WIDTH;
     clone.style.width = exportWidth + 'px';
-    clone.style.height = table.scrollHeight + 'px';
+    
+    // Recalculate spanning pill positions at export width
+    if (clonedTbody) {
+      const spanningPills = clonedTbody.querySelectorAll('.coursepill-span');
+      spanningPills.forEach(pill => {
+        const day = pill.getAttribute('data-day');
+        const firstSlot = pill.getAttribute('data-first-slot');
+        const lastSlot = pill.getAttribute('data-last-slot');
+        
+        if (day && firstSlot && lastSlot) {
+          const firstCell = clone.querySelector(`.slotcell[data-day="${day}"][data-slot="${firstSlot}"]`);
+          const lastCell = clone.querySelector(`.slotcell[data-day="${day}"][data-slot="${lastSlot}"]`);
+          
+          if (firstCell && lastCell) {
+            const firstRect = firstCell.getBoundingClientRect();
+            const lastRect = lastCell.getBoundingClientRect();
+            const tbodyRect = clonedTbody.getBoundingClientRect();
+            
+            pill.style.top = `${firstRect.top - tbodyRect.top}px`;
+            pill.style.height = `${lastRect.bottom - firstRect.top}px`;
+          }
+        }
+      });
+    }
 
     const canvas = await html2canvas(clone, {backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff', width: exportWidth, scale: SCALE});
     wrapper.remove();
@@ -254,6 +300,17 @@ async function exportSchedulePDF(){
     const table = node.querySelector('table') || node;
     const clone = table.cloneNode(true);
     
+    // Clone tbody and its spanning pills
+    const originalTbody = table.querySelector('tbody');
+    const clonedTbody = clone.querySelector('tbody');
+    if (originalTbody && clonedTbody) {
+      const spanningPills = originalTbody.querySelectorAll('.coursepill-span');
+      spanningPills.forEach(pill => {
+        const clonedPill = pill.cloneNode(true);
+        clonedTbody.appendChild(clonedPill);
+      });
+    }
+    
     clone.querySelectorAll('.has-conflict').forEach(el => el.classList.remove('has-conflict'));
     clone.querySelectorAll('.conflict').forEach(el => el.classList.remove('conflict'));
     
@@ -268,6 +325,31 @@ async function exportSchedulePDF(){
     const SCALE = 2;
     const exportWidth = EXPORT_FIXED_WIDTH;
     clone.style.width = exportWidth + 'px';
+    clone.style.height = table.scrollHeight + 'px';
+    
+    // Recalculate spanning pill positions at export width
+    if (clonedTbody) {
+      const spanningPills = clonedTbody.querySelectorAll('.coursepill-span');
+      spanningPills.forEach(pill => {
+        const day = pill.getAttribute('data-day');
+        const firstSlot = pill.getAttribute('data-first-slot');
+        const lastSlot = pill.getAttribute('data-last-slot');
+        
+        if (day && firstSlot && lastSlot) {
+          const firstCell = clone.querySelector(`.slotcell[data-day="${day}"][data-slot="${firstSlot}"]`);
+          const lastCell = clone.querySelector(`.slotcell[data-day="${day}"][data-slot="${lastSlot}"]`);
+          
+          if (firstCell && lastCell) {
+            const firstRect = firstCell.getBoundingClientRect();
+            const lastRect = lastCell.getBoundingClientRect();
+            const tbodyRect = clonedTbody.getBoundingClientRect();
+            
+            pill.style.top = `${firstRect.top - tbodyRect.top}px`;
+            pill.style.height = `${lastRect.bottom - firstRect.top}px`;
+          }
+        }
+      });
+    }
 
     const canvas = await html2canvas(clone, {backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff', width: exportWidth, scale: SCALE});
     wrapper.remove();
@@ -313,6 +395,44 @@ async function exportScheduleXLSX(){
     const header = ['節次', '時間', ...days.map(d => `週${d}`)];
     data.push(header);
     
+    // Track which cells should be merged for intercollegiate courses
+    const mergeCells = []; // array of {s:{r,c}, e:{r,c}}
+    const intercollegiateData = new Map(); // key: "day-firstSlot", value: {course, lastSlot}
+    
+    // Pre-process intercollegiate courses
+    for (const c of state.selectedCourses) {
+      if (c.dept && c.dept.includes('校際')) {
+        const times = parseTimeToSchedule(c.time);
+        if (!times || times.length === 0) continue;
+        for (const t of times) {
+          if (t.slots && t.slots.length > 1) {
+            const firstSlot = t.slots[0];
+            const lastSlot = t.slots[t.slots.length - 1];
+            const parts = [c.name];
+            if (c.teacher) parts.push(c.teacher);
+            if (c.location) parts.push(c.location);
+                        // Add time info
+            const firstSlotInfo = SLOT_TABLE.find(s => s.code === firstSlot) || NTU_SLOT_TABLE.find(s => s.code === firstSlot);
+            const lastSlotInfo = SLOT_TABLE.find(s => s.code === lastSlot) || NTU_SLOT_TABLE.find(s => s.code === lastSlot);
+            if (firstSlotInfo && lastSlotInfo) {
+              const timeStart = String(firstSlotInfo.s).padStart(4,'0').replace(/(\d{2})(\d{2})/,'$1:$2');
+              const timeEnd = String(lastSlotInfo.e).padStart(4,'0').replace(/(\d{2})(\d{2})/,'$1:$2');
+              parts.push(`${timeStart} - ${timeEnd}`);
+            }
+            
+            const key = `${t.day}-${firstSlot}`;
+            intercollegiateData.set(key, {
+              course: parts.join('\n'),
+              firstSlot,
+              lastSlot,
+              slots: t.slots,
+              day: t.day
+            });
+          }
+        }
+      }
+    }
+    
     for (const slot of slots) {
       const timeStr = `${String(slot.s).padStart(4,'0').replace(/(\d{2})(\d{2})/,'$1:$2')} - ${String(slot.e).padStart(4,'0').replace(/(\d{2})(\d{2})/,'$1:$2')}`;
       const row = [slot.code, timeStr];
@@ -320,16 +440,49 @@ async function exportScheduleXLSX(){
       for (const day of days) {
         const courses = [];
         
-        for (const c of state.selectedCourses) {
-          const times = parseTimeToSchedule(c.time);
-          if (!times || times.length === 0) continue;
-          for (const t of times) {
-            if (t.day === day && t.slots.includes(slot.code)) {
-              const parts = [c.name];
-              if (c.teacher) parts.push(c.teacher);
-              if (c.location) parts.push(c.location);
-              courses.push(parts.join('\n'));
-              break;
+        // Check if this is the start of an intercollegiate course span
+        const interKey = `${day}-${slot.code}`;
+        let isPartOfSpan = false;
+        
+        // Check if this slot is part of any intercollegiate course
+        for (const [key, info] of intercollegiateData.entries()) {
+          if (info.day === day && info.slots.includes(slot.code)) {
+            if (info.firstSlot === slot.code) {
+              // This is the first slot - add course info
+              courses.push('[\u6821\u969b]\n' + info.course);
+              
+              // Calculate merge range
+              const firstRowIdx = 1 + slots.findIndex(s => s.code === info.firstSlot);
+              const lastRowIdx = 1 + slots.findIndex(s => s.code === info.lastSlot);
+              const colIdx = 2 + days.indexOf(day);
+              
+              if (firstRowIdx < lastRowIdx) {
+                mergeCells.push({
+                  s: {r: firstRowIdx, c: colIdx},
+                  e: {r: lastRowIdx, c: colIdx}
+                });
+              }
+            }
+            isPartOfSpan = true;
+            break;
+          }
+        }
+        
+        if (!isPartOfSpan) {
+          // Regular courses (non-intercollegiate)
+          for (const c of state.selectedCourses) {
+            if (c.dept && c.dept.includes('校際')) continue;
+            
+            const times = parseTimeToSchedule(c.time);
+            if (!times || times.length === 0) continue;
+            for (const t of times) {
+              if (t.day === day && t.slots.includes(slot.code)) {
+                const parts = [c.name];
+                if (c.teacher) parts.push(c.teacher);
+                if (c.location) parts.push(c.location);
+                courses.push(parts.join('\n'));
+                break;
+              }
             }
           }
         }
@@ -340,6 +493,11 @@ async function exportScheduleXLSX(){
     }
     
     const ws = XLSX.utils.aoa_to_sheet(data);
+    
+    // Apply cell merges
+    if (mergeCells.length > 0) {
+      ws['!merges'] = mergeCells;
+    }
     
     const range = XLSX.utils.decode_range(ws['!ref']);
     ws['!cols'] = [{wch: 6}, {wch: 14}, ...days.map(() => ({wch: 18}))];

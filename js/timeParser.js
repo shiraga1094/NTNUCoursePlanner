@@ -20,6 +20,55 @@ export const SLOT_TABLE = [
   { code: "D",  s:2125, e:2215 },
 ];
 
+// NTU slot times for intercollegiate courses (臺大時間)
+export const NTU_SLOT_TABLE = [
+  { code: "A", s:1825, e:1915 },
+  { code: "B", s:1920, e:2010 },
+  { code: "C", s:2015, e:2105 },
+  { code: "D", s:2110, e:2200 },
+];
+
+// Format time from HHMM to HH:MM
+export function formatTime(hhmm) {
+  const str = String(hhmm).padStart(4, '0');
+  return `${str.substring(0, 2)}:${str.substring(2)}`;
+}
+
+// Parse actual time range considering NTU times for ABCD slots
+export function parseActualTimeRange(timeRaw) {
+  if (!timeRaw || timeRaw.trim() === "") return null;
+  const segments = timeRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+  
+  for (const seg of segments) {
+    const m = seg.match(/([一二三四五六日])\s*(\d{1,2}|[A-D])\s*[-－]\s*(\d{1,2}|[A-D])/);
+    if (m) {
+      const day = m[1];
+      let startCode = m[2];
+      let endCode = m[3];
+      if (/^\d+$/.test(startCode)) startCode = startCode.padStart(2,'0');
+      if (/^\d+$/.test(endCode)) endCode = endCode.padStart(2,'0');
+      
+      // Use NTU times for ABCD slots
+      const useNTU = /[ABCD]/.test(startCode) || /[ABCD]/.test(endCode);
+      const table = useNTU ? NTU_SLOT_TABLE : SLOT_TABLE;
+      
+      const startSlot = table.find(s => s.code === startCode);
+      const endSlot = table.find(s => s.code === endCode);
+      
+      if (startSlot && endSlot) {
+        return {
+          day,
+          startCode,
+          endCode,
+          startTime: startSlot.s,
+          endTime: endSlot.e
+        };
+      }
+    }
+  }
+  return null;
+}
+
 // Parse time string into human-readable format
 // Example: "二 3-4 公館 Ｓ401" -> "星期二 第 03-04 節"
 export function parseSlot(timeRaw) {

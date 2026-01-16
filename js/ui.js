@@ -3,7 +3,7 @@ import { $, escapeHtml, deptMatchesCategory } from './utils.js';
 import { denseKey } from './courseData.js';
 import { isSaved, isSelected, getFilteredCourses } from './filters.js';
 import { addToSaved, removeSaved, toggleSelected, checkNewCourseConflict } from './courseActions.js';
-import { parseSlot, parseTimeToSchedule, dayIndex, slotIndex, SLOT_TABLE } from './timeParser.js';
+import { parseSlot, parseTimeToSchedule, dayIndex, slotIndex, SLOT_TABLE, parseActualTimeRange, formatTime, NTU_SLOT_TABLE } from './timeParser.js';
 
 function generateCourseInfo(course) {
   const info = [];
@@ -449,8 +449,22 @@ export function renderSchedule(){
     }
   }
 
+  // Separate regular courses and intercollegiate courses
+  // Check dept field for "校際" keyword
+  const regularCourses = [];
+  const intercollegiateCourses = [];
+  
+  for (const c of state.selectedCourses) {
+    if (c.dept && c.dept.includes('校際')) {
+      intercollegiateCourses.push(c);
+    } else {
+      regularCourses.push(c);
+    }
+  }
+
+  // Render regular courses in cells
   const cellCourses = new Map();
-  for (const c of state.selectedCourses){
+  for (const c of regularCourses){
     const times = parseTimeToSchedule(c.time);
     if (!times || times.length === 0) continue;
     for (const t of times) {
@@ -487,6 +501,87 @@ export function renderSchedule(){
         openModal(`${c.name}（${c.code}${c.group?`-${c.group}`:""}）`, html);
       };
       cell.appendChild(pill);
+    }
+  }
+
+  // Render intercollegiate courses as spanning pills
+  const tbody = wrap.querySelector('tbody');
+  if (tbody && intercollegiateCourses.length > 0) {
+    const showConflict = $("p2ShowConflict").checked;
+    
+    for (const c of intercollegiateCourses) {
+      const times = parseTimeToSchedule(c.time);
+      if (!times || times.length === 0) continue;
+      
+      for (const t of times) {
+        const firstSlot = t.slots[0];
+        const lastSlot = t.slots[t.slots.length - 1];
+        
+        // Find first and last cells
+        const firstCell = document.querySelector(`.slotcell[data-day="${t.day}"][data-slot="${firstSlot}"]`);
+        const lastCell = document.querySelector(`.slotcell[data-day="${t.day}"][data-slot="${lastSlot}"]`);
+        
+        if (!firstCell || !lastCell) continue;
+        
+        // Calculate position
+        const firstRect = firstCell.getBoundingClientRect();
+        const lastRect = lastCell.getBoundingClientRect();
+        const tbodyRect = tbody.getBoundingClientRect();
+        
+        const top = firstRect.top - tbodyRect.top;
+        const height = lastRect.bottom - firstRect.top;
+        const dayIdx = ["一","二","三","四","五","六"].indexOf(t.day);
+        const left = `calc((100% / 7) * ${dayIdx + 1} + 4px)`;
+        
+        // Get time for first and last slots
+        // For ABCD slots in intercollegiate courses, use NTU times
+        // For numeric slots (00-10), use SLOT_TABLE
+        let startSlotInfo = SLOT_TABLE.find(s => s.code === firstSlot);
+        if (!startSlotInfo) {
+          startSlotInfo = NTU_SLOT_TABLE.find(s => s.code === firstSlot);
+        }
+        
+        let endSlotInfo = SLOT_TABLE.find(s => s.code === lastSlot);
+        if (!endSlotInfo) {
+          endSlotInfo = NTU_SLOT_TABLE.find(s => s.code === lastSlot);
+        }
+        
+        let timeDisplay = '';
+        if (startSlotInfo && endSlotInfo) {
+          timeDisplay = `${formatTime(startSlotInfo.s)} - ${formatTime(endSlotInfo.e)}`;
+        } else {
+          timeDisplay = `${firstSlot} - ${lastSlot}`;
+        }
+        
+        const courseKey = denseKey(c);
+        const isConflictingWithAttempted = conflictingCourseKeys.has(courseKey);
+        
+        const pill = document.createElement('div');
+        pill.className = 'coursepill coursepill-span' + 
+          (showConflict && isConflictingWithAttempted ? ' conflict' : '');
+        pill.style.top = `${top}px`;
+        pill.style.height = `${height}px`;
+        pill.style.left = left;
+        
+        // Store data attributes for export recalculation
+        pill.setAttribute('data-day', t.day);
+        pill.setAttribute('data-first-slot', firstSlot);
+        pill.setAttribute('data-last-slot', lastSlot);
+        
+        pill.innerHTML = `
+          <div class="pname">${escapeHtml(c.name)}</div>
+          <div class="pinfo" style="margin-top:4px; font-weight:600;">${escapeHtml(timeDisplay)}</div>
+          <div class="pinfo" style="margin-top:2px;">${escapeHtml(c.teacher || "")}${c.location ? ' ' + escapeHtml(c.location) : ''}</div>
+        `;
+        
+        pill.onclick = () => {
+          const key2 = denseKey(c);
+          const html = state.denseMap[key2] || generateCourseInfo(c);
+          openModal(`${c.name}（${c.code}${c.group?`-${c.group}`:""}）`, html);
+        };
+        
+        tbody.appendChild(pill);
+      }
     }
   }
 }

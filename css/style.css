@@ -428,6 +428,9 @@ body, .modal-card, .page-top, .card{ transition: background 280ms ease, color 18
   overflow:hidden;
   border:1px solid var(--border);
 }
+.table tbody{
+  position: relative;
+}
 .table th, .table td{
   border:1px solid var(--border);
   vertical-align: top;
@@ -481,6 +484,21 @@ body, .modal-card, .page-top, .card{ transition: background 280ms ease, color 18
 }
 .coursepill .pname{ font-weight:800; font-size:12px; margin-bottom:4px; }
 .coursepill .pinfo{ color: var(--muted); font-size:11px; }
+
+.coursepill-span{
+  position: absolute;
+  z-index: 10;
+  pointer-events: auto;
+  width: calc(100% / 7 - 8px);
+  margin: 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: rgba(122,162,255,.15);
+  border: 1px solid rgba(122,162,255,.35);
+}
 
 .sorted{ display:flex; flex-direction:column; gap:10px; }
 .sorted.hidden{ display:none; }
@@ -661,6 +679,10 @@ body.light .coursepill.conflict{
   border-color: rgba(255,93,93,.85);
   background: rgba(255,93,93,.28);
 }
+body.light .coursepill-span{
+  background: rgba(122,162,255,.12);
+  border: 1px solid rgba(122,162,255,.45);
+}
 
 /* Gray theme overrides */
 body.gray .topbar{
@@ -742,6 +764,10 @@ body.gray .coursepill{ background: rgba(70,70,70,.9); border-color: var(--border
 body.gray .coursepill.conflict{
   border-color: rgba(255,93,93,.75);
   background: rgba(255,93,93,.25);
+}
+body.gray .coursepill-span{
+  background: rgba(122,162,255,.18);
+  border: 1px solid rgba(122,162,255,.45);
 }
 body.light .modal-body{ color: var(--muted); }
 
