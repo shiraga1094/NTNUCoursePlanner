@@ -411,9 +411,17 @@ async function exportScheduleXLSX(){
             const parts = [c.name];
             if (c.teacher) parts.push(c.teacher);
             if (c.location) parts.push(c.location);
-                        // Add time info
-            const firstSlotInfo = SLOT_TABLE.find(s => s.code === firstSlot) || NTU_SLOT_TABLE.find(s => s.code === firstSlot);
-            const lastSlotInfo = SLOT_TABLE.find(s => s.code === lastSlot) || NTU_SLOT_TABLE.find(s => s.code === lastSlot);
+                        // Add time info - intercollegiate courses: try NTU times first, fallback to SLOT_TABLE
+            let firstSlotInfo = NTU_SLOT_TABLE.find(s => s.code === firstSlot);
+            if (!firstSlotInfo) {
+              firstSlotInfo = SLOT_TABLE.find(s => s.code === firstSlot);
+            }
+            
+            let lastSlotInfo = NTU_SLOT_TABLE.find(s => s.code === lastSlot);
+            if (!lastSlotInfo) {
+              lastSlotInfo = SLOT_TABLE.find(s => s.code === lastSlot);
+            }
+            
             if (firstSlotInfo && lastSlotInfo) {
               const timeStart = String(firstSlotInfo.s).padStart(4,'0').replace(/(\d{2})(\d{2})/,'$1:$2');
               const timeEnd = String(lastSlotInfo.e).padStart(4,'0').replace(/(\d{2})(\d{2})/,'$1:$2');

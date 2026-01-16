@@ -534,16 +534,15 @@ export function renderSchedule(){
         const left = `calc((100% / 7) * ${dayIdx + 1} + 4px)`;
         
         // Get time for first and last slots
-        // For ABCD slots in intercollegiate courses, use NTU times
-        // For numeric slots (00-10), use SLOT_TABLE
-        let startSlotInfo = SLOT_TABLE.find(s => s.code === firstSlot);
+        // Intercollegiate courses: try NTU times first, fallback to SLOT_TABLE
+        let startSlotInfo = NTU_SLOT_TABLE.find(s => s.code === firstSlot);
         if (!startSlotInfo) {
-          startSlotInfo = NTU_SLOT_TABLE.find(s => s.code === firstSlot);
+          startSlotInfo = SLOT_TABLE.find(s => s.code === firstSlot);
         }
         
-        let endSlotInfo = SLOT_TABLE.find(s => s.code === lastSlot);
+        let endSlotInfo = NTU_SLOT_TABLE.find(s => s.code === lastSlot);
         if (!endSlotInfo) {
-          endSlotInfo = NTU_SLOT_TABLE.find(s => s.code === lastSlot);
+          endSlotInfo = SLOT_TABLE.find(s => s.code === lastSlot);
         }
         
         let timeDisplay = '';
