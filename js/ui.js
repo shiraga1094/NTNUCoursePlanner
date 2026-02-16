@@ -260,7 +260,7 @@ export function renderResults(){
     ].filter(Boolean).join("");
 
     card.innerHTML = `
-      <div class="title">${escapeHtml(c.name)} <span class="small">(${escapeHtml(c.code)}${c.group?`-${escapeHtml(c.group)}`:""})</span></div>
+      <div class="title">${escapeHtml(c.name)} <span class="small">(${escapeHtml(c.code)}${c.group?`-${escapeHtml(c.group)}`:""})${c.serial?` (#${escapeHtml(c.serial)})`:""}</span></div>
       <div class="meta">${tags}</div>
       <div class="small">老師：${escapeHtml(c.teacher || "—")}</div>
       ${c.restrict ? `<div class="small">限修：${escapeHtml(c.restrict)}</div>` : ""}
@@ -498,7 +498,7 @@ export function renderSchedule(){
       pill.onclick = ()=>{
         const key2 = denseKey(c);
         const html = state.denseMap[key2] || generateCourseInfo(c);
-        openModal(`${c.name}（${c.code}${c.group?`-${c.group}`:""}）`, html);
+        openModal(`${c.name}（${c.code}${c.group?`-${c.group}`:""}${c.serial?` (#${c.serial})`:""}）`, html);
       };
       cell.appendChild(pill);
     }
@@ -576,7 +576,7 @@ export function renderSchedule(){
         pill.onclick = () => {
           const key2 = denseKey(c);
           const html = state.denseMap[key2] || generateCourseInfo(c);
-          openModal(`${c.name}（${c.code}${c.group?`-${c.group}`:""}）`, html);
+          openModal(`${c.name}（${c.code}${c.group?`-${c.group}`:""}${c.serial?` (#${c.serial})`:""}）`, html);
         };
         
         tbody.appendChild(pill);
@@ -636,13 +636,13 @@ export function renderSortedList(){
     const div = document.createElement("div");
     div.className = "row";
     div.innerHTML = `
-      <div class="rtitle">${escapeHtml(it.c.name)} <span class="small">(${escapeHtml(it.c.code)}${it.c.group?`-${escapeHtml(it.c.group)}`:""})</span></div>
+      <div class="rtitle">${escapeHtml(it.c.name)} <span class="small">(${escapeHtml(it.c.code)}${it.c.group?`-${escapeHtml(it.c.group)}`:""}${it.c.serial?` (#${escapeHtml(it.c.serial)})`:""})</span></div>
       <div class="rmeta">${escapeHtml(it.c.dept||"—")} ・ ${escapeHtml(it.c.teacher||"—")} ・ 📚 ${it.c.credit}</div>
       <div class="rmeta">🕒 ${escapeHtml(parseSlot(it.c.time))}</div>
     `;
     div.onclick = ()=>{
       const key = denseKey(it.c);
-      openModal(`${it.c.name}（${it.c.code}${it.c.group?`-${escapeHtml(it.c.group)}`:""}）`, state.denseMap[key] || generateCourseInfo(it.c));
+      openModal(`${it.c.name}（${it.c.code}${it.c.group?`-${escapeHtml(it.c.group)}`:""}${it.c.serial?` (#${it.c.serial})`:""}）`, state.denseMap[key] || generateCourseInfo(it.c));
     };
     wrap.appendChild(div);
   }
