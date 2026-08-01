@@ -64,7 +64,7 @@ function baseParams(year, term, dept) {
 async function safeGet(client, url, params) {
   try {
     const r = await client.get(url, { params });
-    await sleep(800);
+    await sleep(100);
     return r;
   } catch {
     await sleep(1000);
